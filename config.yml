@@ -1,0 +1,86 @@
+---
+  - name: Preconfig
+    hosts: demo
+    tasks:
+      - name: Docker install
+        block:
+          - name: Install dependencies
+            apt:
+              name: "{{  item }}"
+              state: present
+              update_cache: yes
+            loop:
+                - apt-transport-https
+                - ca-certificates
+                - curl
+                - gnupg
+                - lsb-release
+
+          - name: Add GPG Key
+            apt_key:
+              url: https://download.docker.com/linux/ubuntu/gpg
+              state: present
+
+          - name: Add docker repository
+            apt_repository:
+              repo: deb https://download.docker.com/linux/ubuntu bionic stable
+              state: present
+
+          - name: Install docker
+            apt:
+              name: "{{ item }}"
+              state: latest
+              update_cache: yes
+            loop:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+            
+          - name: Docker installing verification
+            service:
+              name: docker
+              state: started
+              enabled: yes
+
+          - name: Ensure group "docker" exists
+            ansible.builtin.group:
+              name: docker
+              state: present
+          
+          - name: Adding user to docker group
+            user:
+              name: superuser
+              groups: docker
+              append: yes
+        become: true
+      - name: Installing Docker Compose
+        block:
+          - name: Getting latest version of Docker Compose
+            uri:
+              url: https://api.github.com/repos/docker/compose/releases/latest
+              body_format: json
+            register: page
+
+          - name: Installing Docker-compose
+            get_url:
+              url: "https://github.com/docker/compose/releases/download/{{ page.json.tag_name }}/docker-compose-Linux-x86_64"
+              dest: /usr/local/bin/docker-compose
+              mode: 0755
+        become: true
+
+      - name: Ending of installation
+        block:
+          - name: Adding user to group docker
+            vars:
+                user: testuser
+            user:
+              name: "{{ user }}"
+              state: present
+              groups: docker
+
+          - name: Reboot machine for apply changes
+            ansible.builtin.reboot:
+              msg: "Rebooting machine in 15 seconds..."
+        become: true
+
+
