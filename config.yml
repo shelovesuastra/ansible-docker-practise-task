@@ -80,7 +80,7 @@
 
           - name: Reboot machine for apply changes
             ansible.builtin.reboot:
-              msg: "Rebooting machine in 15 seconds..."
+              msg: "Rebooting machine..."
         become: true
 
 
